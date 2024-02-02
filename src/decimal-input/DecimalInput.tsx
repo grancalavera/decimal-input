@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { getFormatter, getValidator, isValidDecimalInput } from "./model";
+import { getFormatter, getInputValidator, getValueValidator } from "./model";
 
 type ReactInputProps = Omit<
   DetailedHTMLProps<InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>,
@@ -18,19 +18,22 @@ type DecimalInputProps = {
   onChange: (value: number | undefined) => void;
   onBlur?: (value: number | undefined) => void;
   format?: (value: number) => string;
-  validate?: (value: number) => boolean;
+  validateInput?: (input: string) => boolean;
+  validateValue?: (value: number) => boolean;
   onValidChange?: (value: boolean) => void;
 };
 
 export const DecimalInput = ({
-  validate,
+  validateValue,
   format,
   initialValue,
   onChange,
+  validateInput,
   onValidChange,
   ...props
 }: ReactInputProps & DecimalInputProps) => {
-  const validateRef = useRef(getValidator(validate));
+  const validateValueRef = useRef(getValueValidator(validateValue));
+  const validateInputRef = useRef(getInputValidator(validateInput));
   const formatRef = useRef(getFormatter(format));
 
   const [displayValue, setDisplayValue] = useState(() =>
@@ -52,7 +55,7 @@ export const DecimalInput = ({
       return;
     }
 
-    const valid = validateRef.current(initialValue);
+    const valid = validateValueRef.current(initialValue);
     onValidChange?.(valid);
     if (valid) {
       onChange(initialValue);
@@ -70,7 +73,7 @@ export const DecimalInput = ({
           return;
         }
 
-        if (!isValidDecimalInput(value)) {
+        if (!validateInputRef.current(value)) {
           return;
         }
 
@@ -78,7 +81,7 @@ export const DecimalInput = ({
         setDisplayValue(value);
 
         const decimalValue = parseFloat(value);
-        const valid = validateRef.current(decimalValue);
+        const valid = validateValueRef.current(decimalValue);
         onValidChange?.(valid);
 
         if (valid) {
@@ -92,7 +95,7 @@ export const DecimalInput = ({
       onBlur={(e) => {
         const value = e.target.value;
 
-        if (!isValidDecimalInput(value)) {
+        if (!validateInputRef.current(value)) {
           return;
         }
 
