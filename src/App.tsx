@@ -1,5 +1,4 @@
 import { useState } from "react";
-import "./App.css";
 import { DecimalInput } from "./decimal-input/DecimalInput";
 import { isValidPositiveDecimalInput } from "./decimal-input/model";
 
@@ -11,7 +10,7 @@ function App() {
         alternatives={[10, 1.001]}
         validateInput={isValidPositiveDecimalInput()}
       />
-      {/* <Scenario title="Decimals" alternatives={[10, -20.4, -0.5]} />
+      <Scenario title="Decimals" alternatives={[10, -20.4, -0.5]} />
       <Scenario
         title="Integers"
         alternatives={[1, 2, 3, 1.1]}
@@ -28,7 +27,7 @@ function App() {
         format={(value) =>
           value < 0 ? `(${Math.abs(value)})` : value.toString()
         }
-      /> */}
+      />
     </>
   );
 }
