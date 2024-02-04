@@ -1,20 +1,32 @@
 import { useState } from "react";
-import "./App.css";
 import { DecimalInput } from "./decimal-input/DecimalInput";
+import { isValidPositiveDecimalInput } from "./decimal-input/model";
 
 function App() {
   return (
     <>
-      <Scenario title="Decimals" alternatives={[10, -20.4, -0.5]} />
+      <Scenario
+        title="Positive Decimals (precision=5,scale=2)"
+        alternatives={[10, 1.001, 100.01]}
+        validateInput={isValidPositiveDecimalInput}
+        maxPrecision={5}
+        maxScale={2}
+      />
+      <Scenario
+        title="Decimals (precision=5,scale=2)"
+        alternatives={[10, -20.4, -0.5, 100.01, -100.01, 1.001, 100000]}
+        maxPrecision={5}
+        maxScale={2}
+      />
       <Scenario
         title="Integers"
         alternatives={[1, 2, 3, 1.1]}
-        validate={(candidate) => Number.isInteger(candidate)}
+        validateValue={(candidate) => Number.isInteger(candidate)}
       />
       <Scenario
         title="Zero or Greater"
         alternatives={[10, -20.4, 0, -0.5]}
-        validate={(candidate) => candidate >= 0}
+        validateValue={(candidate) => candidate >= 0}
       />
       <Scenario
         title="Financial"
@@ -31,7 +43,10 @@ const Scenario = (props: {
   title: string;
   alternatives: number[];
   format?: (value: number) => string;
-  validate?: (value: number) => boolean;
+  validateValue?: (value: number) => boolean;
+  validateInput?: (input: string) => boolean;
+  maxPrecision?: number;
+  maxScale?: number;
 }) => {
   const [initialValue, setInitialValue] = useState<number>();
   const [value, setValue] = useState<number>();
@@ -52,8 +67,11 @@ const Scenario = (props: {
         initialValue={initialValue}
         onChange={setValue}
         format={props.format}
-        validate={props.validate}
+        validateValue={props.validateValue}
+        validateInput={props.validateInput}
         onValidChange={setIsValid}
+        maxPrecision={props.maxPrecision}
+        maxScale={props.maxScale}
       />
       <div style={{ padding: 10 }}>
         {props.alternatives.map((alternative, i) => (

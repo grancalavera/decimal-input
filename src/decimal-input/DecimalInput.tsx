@@ -6,7 +6,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { getFormatter, getValidator, isValidDecimalInput } from "./model";
+import {
+  getFormatter,
+  getInputValidator,
+  getPrecisionAndScaleValidator,
+  getValueValidator,
+} from "./model";
 
 type ReactInputProps = Omit<
   DetailedHTMLProps<InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>,
@@ -18,28 +23,58 @@ type DecimalInputProps = {
   onChange: (value: number | undefined) => void;
   onBlur?: (value: number | undefined) => void;
   format?: (value: number) => string;
-  validate?: (value: number) => boolean;
+  validateInput?: (input: string) => boolean;
+  validateValue?: (value: number) => boolean;
   onValidChange?: (value: boolean) => void;
+  maxPrecision?: number;
+  maxScale?: number;
 };
 
 export const DecimalInput = ({
-  validate,
+  validateValue,
   format,
   initialValue,
   onChange,
+  validateInput,
   onValidChange,
   ...props
 }: ReactInputProps & DecimalInputProps) => {
-  const validateRef = useRef(getValidator(validate));
+  const inputRef = useRef<HTMLInputElement>(null);
+  const validateValueRef = useRef(getValueValidator(validateValue));
+  const validateInputRef = useRef((input: string) => {
+    const isValidInput = getInputValidator(validateInput);
+    const isValidPrecisionAndScale = getPrecisionAndScaleValidator(
+      props.maxPrecision ?? Number.MAX_SAFE_INTEGER,
+      props.maxScale ?? Number.MAX_SAFE_INTEGER
+    );
+    return isValidInput(input) && isValidPrecisionAndScale(input);
+  });
+
   const formatRef = useRef(getFormatter(format));
 
-  const [displayValue, setDisplayValue] = useState(() =>
-    formatRef.current(initialValue)
-  );
+  const [displayValue, setDisplayValue] = useState(() => {
+    if (initialValue === undefined) {
+      return "";
+    }
 
-  const [rawInputValue, setRawInputValue] = useState(() =>
-    getFormatter()(initialValue)
-  );
+    if (!validateInputRef.current(initialValue.toString())) {
+      return "";
+    }
+
+    return formatRef.current(initialValue);
+  });
+
+  const [rawInputValue, setRawInputValue] = useState(() => {
+    if (initialValue === undefined) {
+      return "";
+    }
+
+    if (!validateInputRef.current(initialValue.toString())) {
+      return "";
+    }
+
+    return getFormatter()(initialValue);
+  });
 
   const clear = useCallback(() => {
     setDisplayValue("");
@@ -52,7 +87,11 @@ export const DecimalInput = ({
       return;
     }
 
-    const valid = validateRef.current(initialValue);
+    if (!validateInputRef.current(initialValue.toString())) {
+      return;
+    }
+
+    const valid = validateValueRef.current(initialValue);
     onValidChange?.(valid);
     if (valid) {
       onChange(initialValue);
@@ -60,31 +99,56 @@ export const DecimalInput = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value === "") {
+      clear();
+      return;
+    }
+
+    const isValidInput = validateInputRef.current(value);
+
+    // prevent caret from jumping to the end
+    const { selectionStart, selectionEnd } = e.target;
+    requestAnimationFrame(() => {
+      if (!inputRef.current) return;
+
+      if (selectionStart !== null) {
+        inputRef.current.selectionStart = isValidInput
+          ? selectionStart
+          : // prevents the caret from advancing 1 position when the input is invalid
+            selectionStart - 1;
+      }
+
+      if (selectionEnd !== null) {
+        inputRef.current.selectionEnd = isValidInput
+          ? selectionEnd
+          : // prevents the caret from advancing 1 position when the input is invalid
+            selectionEnd - 1;
+      }
+    });
+
+    if (!isValidInput) {
+      return;
+    }
+
+    setRawInputValue(value);
+    setDisplayValue(value);
+
+    const decimalValue = parseFloat(value);
+    const valid = validateValueRef.current(decimalValue);
+    onValidChange?.(valid);
+
+    if (valid) {
+      onChange(decimalValue);
+    }
+  };
+
   return (
     <input
+      ref={inputRef}
       value={displayValue}
-      onChange={(e) => {
-        const value = e.target.value;
-        if (value === "") {
-          clear();
-          return;
-        }
-
-        if (!isValidDecimalInput(value)) {
-          return;
-        }
-
-        setRawInputValue(value);
-        setDisplayValue(value);
-
-        const decimalValue = parseFloat(value);
-        const valid = validateRef.current(decimalValue);
-        onValidChange?.(valid);
-
-        if (valid) {
-          onChange(decimalValue);
-        }
-      }}
+      onChange={handleChange}
       onFocus={(e) => {
         setDisplayValue(rawInputValue);
         props.onFocus?.(e);
@@ -92,7 +156,7 @@ export const DecimalInput = ({
       onBlur={(e) => {
         const value = e.target.value;
 
-        if (!isValidDecimalInput(value)) {
+        if (!validateInputRef.current(value)) {
           return;
         }
 
