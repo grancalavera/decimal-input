@@ -1,8 +1,3 @@
-type InputValidationOptions = {
-  precision?: number;
-  scale?: number;
-};
-
 export const isValidDecimalInput = (input: string): boolean => {
   const exceptions = ["", ".", "-", "+", "-.", "+."];
   const decimalRe = /^[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)$/;
@@ -12,36 +7,72 @@ export const isValidDecimalInput = (input: string): boolean => {
   return decimalRe.test(input);
 };
 
-export const isValidPositiveDecimalInput =
-  (options?: InputValidationOptions) =>
-  (input: string): boolean => {
-    const precision = options?.precision ?? 13;
-    const scale = options?.scale ?? 12;
-    const exceptions = ["", "."];
-    const decimalRe = /^([0-9]+([.][0-9]*)?|[.][0-9]+)$/;
+export const isValidPositiveDecimalInput = (input: string): boolean => {
+  const exceptions = ["", "."];
+  const decimalRe = /^([0-9]+([.][0-9]*)?|[.][0-9]+)$/;
 
-    if (exceptions.includes(input)) {
-      return true;
-    }
-    const validChars = decimalRe.test(input);
+  if (exceptions.includes(input)) {
+    return true;
+  }
 
+  const validChars = decimalRe.test(input);
+  return validChars;
+};
+
+/**
+ * Creates a validator for a decimal input with a given precision and scale
+ * @param maxPrecision maximum number of digits
+ * @param maxScale maximum number of digits to the right of the decimal
+ * @returns (input: string) => boolean
+ */
+export const getPrecisionAndScaleValidator = (
+  maxPrecision: number,
+  maxScale: number
+) => {
+  if (maxPrecision < maxScale) {
+    throw new Error("maxPrecision must be greater than or equal to scale");
+  }
+
+  if (maxPrecision === 0) {
+    throw new Error("maxPrecision must be greater than 0");
+  }
+
+  if (maxPrecision < 0) {
+    throw new Error("maxPrecision must be a positive integer");
+  }
+
+  if (maxScale < 0) {
+    throw new Error("maxScale must be a positive integer");
+  }
+
+  if (!Number.isInteger(maxPrecision)) {
+    throw new Error("maxPrecision must be an integer");
+  }
+
+  if (!Number.isInteger(maxScale)) {
+    throw new Error("maxScale must be an integer");
+  }
+
+  return (input: string) => {
     const [, decimals] = input.split(".");
     const actualScale = decimals === undefined ? 0 : decimals.length;
-    const actualPrecision = input.replace(".", "").length;
-    const validDecimals = actualScale <= scale;
-    const validLength = actualPrecision <= precision;
-    console.log({
-      input,
-      decimals,
-      actualPrecision,
-      actualScale,
-      validChars,
-      validDecimals,
-      validLength,
-    });
+    const sanitisedDigits = input
+      // order matters here
+      .replace(/^-/, "")
+      .replace(/^0+/, "")
+      .replace(".", "");
 
-    return validChars && validDecimals && validLength;
+    const digitsRe = /^\d*$/;
+    if (!digitsRe.test(sanitisedDigits)) {
+      return false;
+    }
+
+    const actualPrecision = sanitisedDigits.length;
+    const isValidScale = actualScale <= maxScale;
+    const isValidPrecision = actualPrecision <= maxPrecision;
+    return isValidScale && isValidPrecision;
   };
+};
 
 export const isValidNumber = (candidate: unknown): candidate is number => {
   return typeof candidate === "number" && !isNaN(candidate);

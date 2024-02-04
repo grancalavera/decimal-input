@@ -6,7 +6,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { getFormatter, getInputValidator, getValueValidator } from "./model";
+import {
+  getFormatter,
+  getInputValidator,
+  getPrecisionAndScaleValidator,
+  getValueValidator,
+} from "./model";
+import { i } from "vitest/dist/reporters-rzC174PQ.js";
 
 type ReactInputProps = Omit<
   DetailedHTMLProps<InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>,
@@ -21,6 +27,8 @@ type DecimalInputProps = {
   validateInput?: (input: string) => boolean;
   validateValue?: (value: number) => boolean;
   onValidChange?: (value: boolean) => void;
+  maxPrecision?: number;
+  maxScale?: number;
 };
 
 export const DecimalInput = ({
@@ -33,16 +41,40 @@ export const DecimalInput = ({
   ...props
 }: ReactInputProps & DecimalInputProps) => {
   const validateValueRef = useRef(getValueValidator(validateValue));
-  const validateInputRef = useRef(getInputValidator(validateInput));
+  const validateInputRef = useRef((input: string) => {
+    const isValidInput = getInputValidator(validateInput);
+    const isValidPrecisionAndScale = getPrecisionAndScaleValidator(
+      props.maxPrecision ?? Number.MAX_SAFE_INTEGER,
+      props.maxScale ?? Number.MAX_SAFE_INTEGER
+    );
+    return isValidInput(input) && isValidPrecisionAndScale(input);
+  });
+
   const formatRef = useRef(getFormatter(format));
 
-  const [displayValue, setDisplayValue] = useState(() =>
-    formatRef.current(initialValue)
-  );
+  const [displayValue, setDisplayValue] = useState(() => {
+    if (initialValue === undefined) {
+      return "";
+    }
 
-  const [rawInputValue, setRawInputValue] = useState(() =>
-    getFormatter()(initialValue)
-  );
+    if (!validateInputRef.current(initialValue.toString())) {
+      return "";
+    }
+
+    return formatRef.current(initialValue);
+  });
+
+  const [rawInputValue, setRawInputValue] = useState(() => {
+    if (initialValue === undefined) {
+      return "";
+    }
+
+    if (!validateInputRef.current(initialValue.toString())) {
+      return "";
+    }
+
+    return getFormatter()(initialValue);
+  });
 
   const clear = useCallback(() => {
     setDisplayValue("");
@@ -52,6 +84,10 @@ export const DecimalInput = ({
 
   useEffect(() => {
     if (initialValue === undefined) {
+      return;
+    }
+
+    if (!validateInputRef.current(initialValue.toString())) {
       return;
     }
 

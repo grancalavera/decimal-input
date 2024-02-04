@@ -6,9 +6,11 @@ function App() {
   return (
     <>
       <Scenario
-        title="Positive Decimals"
-        alternatives={[10, 1.001]}
-        validateInput={isValidPositiveDecimalInput()}
+        title="Positive Decimals with Precision 5 and Scale 2"
+        alternatives={[10, 1.001, 100.01]}
+        validateInput={isValidPositiveDecimalInput}
+        maxPrecision={5}
+        maxScale={2}
       />
       <Scenario title="Decimals" alternatives={[10, -20.4, -0.5]} />
       <Scenario
@@ -38,6 +40,8 @@ const Scenario = (props: {
   format?: (value: number) => string;
   validateValue?: (value: number) => boolean;
   validateInput?: (input: string) => boolean;
+  maxPrecision?: number;
+  maxScale?: number;
 }) => {
   const [initialValue, setInitialValue] = useState<number>();
   const [value, setValue] = useState<number>();
@@ -61,6 +65,8 @@ const Scenario = (props: {
         validateValue={props.validateValue}
         validateInput={props.validateInput}
         onValidChange={setIsValid}
+        maxPrecision={props.maxPrecision}
+        maxScale={props.maxScale}
       />
       <div style={{ padding: 10 }}>
         {props.alternatives.map((alternative, i) => (
