@@ -6,13 +6,18 @@ function App() {
   return (
     <>
       <Scenario
-        title="Positive Decimals with Precision 5 and Scale 2"
+        title="Positive Decimals (precision=5,scale=2)"
         alternatives={[10, 1.001, 100.01]}
         validateInput={isValidPositiveDecimalInput}
         maxPrecision={5}
         maxScale={2}
       />
-      <Scenario title="Decimals" alternatives={[10, -20.4, -0.5]} />
+      <Scenario
+        title="Decimals (precision=5,scale=2)"
+        alternatives={[10, -20.4, -0.5, 100.01, -100.01, 1.001, 100000]}
+        maxPrecision={5}
+        maxScale={2}
+      />
       <Scenario
         title="Integers"
         alternatives={[1, 2, 3, 1.1]}

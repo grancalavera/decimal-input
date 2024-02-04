@@ -12,7 +12,6 @@ import {
   getPrecisionAndScaleValidator,
   getValueValidator,
 } from "./model";
-import { i } from "vitest/dist/reporters-rzC174PQ.js";
 
 type ReactInputProps = Omit<
   DetailedHTMLProps<InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>,
@@ -40,6 +39,7 @@ export const DecimalInput = ({
   onValidChange,
   ...props
 }: ReactInputProps & DecimalInputProps) => {
+  const inputRef = useRef<HTMLInputElement>(null);
   const validateValueRef = useRef(getValueValidator(validateValue));
   const validateInputRef = useRef((input: string) => {
     const isValidInput = getInputValidator(validateInput);
@@ -99,31 +99,56 @@ export const DecimalInput = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value === "") {
+      clear();
+      return;
+    }
+
+    const isValidInput = validateInputRef.current(value);
+
+    // prevent caret from jumping to the end
+    const { selectionStart, selectionEnd } = e.target;
+    requestAnimationFrame(() => {
+      if (!inputRef.current) return;
+
+      if (selectionStart !== null) {
+        inputRef.current.selectionStart = isValidInput
+          ? selectionStart
+          : // prevents the caret from advancing 1 position when the input is invalid
+            selectionStart - 1;
+      }
+
+      if (selectionEnd !== null) {
+        inputRef.current.selectionEnd = isValidInput
+          ? selectionEnd
+          : // prevents the caret from advancing 1 position when the input is invalid
+            selectionEnd - 1;
+      }
+    });
+
+    if (!isValidInput) {
+      return;
+    }
+
+    setRawInputValue(value);
+    setDisplayValue(value);
+
+    const decimalValue = parseFloat(value);
+    const valid = validateValueRef.current(decimalValue);
+    onValidChange?.(valid);
+
+    if (valid) {
+      onChange(decimalValue);
+    }
+  };
+
   return (
     <input
+      ref={inputRef}
       value={displayValue}
-      onChange={(e) => {
-        const value = e.target.value;
-        if (value === "") {
-          clear();
-          return;
-        }
-
-        if (!validateInputRef.current(value)) {
-          return;
-        }
-
-        setRawInputValue(value);
-        setDisplayValue(value);
-
-        const decimalValue = parseFloat(value);
-        const valid = validateValueRef.current(decimalValue);
-        onValidChange?.(valid);
-
-        if (valid) {
-          onChange(decimalValue);
-        }
-      }}
+      onChange={handleChange}
       onFocus={(e) => {
         setDisplayValue(rawInputValue);
         props.onFocus?.(e);
